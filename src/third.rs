@@ -27,5 +27,72 @@ impl<T> List<T> {
     pub fn head(&self) -> Option<&T> {
         self.head.as_ref().map(|node| &node.elem)
     }
+    
+    pub fn iter(&self) -> Iter<T> {
+        Iter { next: self.head.as_deref() }
+    }
 }
 
+pub struct Iter<'a, T> {
+    next: Option<&'a Node<T>>
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<&'a T> {
+        self.next.take().map(|node| {
+            self.next = node.next.as_deref();
+            &node.elem
+        })
+    }
+}
+
+impl<T> Drop for List<T> {
+    fn drop(&mut self) {
+        let mut head = self.head.take();
+        while let Some(ptr_node) = head {
+            if let Ok(mut node) = Rc::try_unwrap(ptr_node) {
+                head = node.next.take();
+            } else {
+                break;
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::List;
+    
+    #[test]
+    fn basics() {
+        let list = List::new();
+        assert_eq!(list.head(), None);
+        
+        let mut list = list.prepend(1).prepend(2).prepend(3);
+        assert_eq!(list.head(), Some(&3));
+        
+        list = list.tail();
+        assert_eq!(list.head(), Some(&2));
+        
+        list = list.tail();
+        assert_eq!(list.head(), Some(&1));
+        
+        list = list.tail();
+        assert_eq!(list.head(), None);
+        
+        list = list.tail();
+        assert_eq!(list.head(), None);
+    }
+    
+    #[test]
+    fn iter() {
+        let list = List::new().prepend(1).prepend(2).prepend(3);
+        
+        let mut iter = list.iter();
+        assert_eq!(iter.next(), Some(&3));
+        assert_eq!(iter.next(), Some(&2));
+        assert_eq!(iter.next(), Some(&1));
+        
+    }
+}
