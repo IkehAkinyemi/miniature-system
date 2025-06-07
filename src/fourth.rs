@@ -40,7 +40,59 @@ impl<T> List<T> {
         }
     }
     
-    // pub fn pop_front(&mut self) -> Option<T> {
-    //     self.head.map(||)
-    // }
+    pub fn pop_front(&mut self) -> Option<T> {
+        self.head.take().map(|old_node| {
+            match old_node.borrow_mut().next.take() {
+                Some(new_node) => {
+                    new_node.borrow_mut().prev.take();
+                    self.head = Some(new_node);
+                },
+                None => {
+                    self.tail.take();
+                }
+            }
+            Rc::try_unwrap(old_node).ok().unwrap().into_inner().elem
+        })
+    }
+}
+
+impl<T> Drop for List<T> {
+    fn drop(&mut self) {
+        while self.pop_front().is_some() {}
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::List;
+
+    
+    #[test]
+    fn basics() {
+        let mut list = List::new();
+        
+        // Check empty list
+        assert_eq!(list.pop_front(), None);
+        
+        // Populate list
+        list.push_front(1);
+        list.push_front(2);
+        list.push_front(3);
+        
+        // Check normal removal
+        assert_eq!(list.pop_front(), Some(3));
+        assert_eq!(list.pop_front(), Some(2));
+        
+        // Push to check no corruption
+        list.push_front(4);
+        list.push_front(5);
+        
+        // Check normal removal
+        assert_eq!(list.pop_front(), Some(5));
+        assert_eq!(list.pop_front(), Some(4));
+        
+        // Remove till exhaustion
+        assert_eq!(list.pop_front(), Some(1));
+        assert_eq!(list.pop_front(), None);
+    }
 }
