@@ -45,18 +45,17 @@ impl<T> LinkedList<T> {
             self.len += 1;
         }
     }
-    
+
     pub fn pop_front(&mut self) -> Option<T> {
         unsafe {
             self.front.map(|node| {
                 let boxed_node = Box::from_raw(node.as_ptr());
                 let result = boxed_node.elem;
+
                 self.front = boxed_node.back;
-                
                 if let Some(new) = self.front {
                     (*new.as_ptr()).front = None;
                 } else {
-                    debug_assert!(self.len == 1);
                     self.back = None;
                 }
                 self.len -= 1;
@@ -64,9 +63,50 @@ impl<T> LinkedList<T> {
             })
         }
     }
-    
+
     pub fn len(&self) -> usize {
         self.len
+    }
+
+    pub fn front(&self) -> Option<&T> {
+        unsafe { self.front.map(|node| &(*node.as_ptr()).elem) }
+    }
+
+    pub fn front_mut(&mut self) -> Option<&mut T> {
+        unsafe { self.front.map(|node| &mut (*node.as_ptr()).elem) }
+    }
+
+    pub fn iter(&self) -> Iter<T> {
+        Iter {
+            front: self.front,
+            back: self.back,
+            len: self.len,
+            _boo: PhantomData,
+        }
+    }
+}
+
+pub struct Iter<'a, T> {
+    front: Link<T>,
+    back: Link<T>,
+    len: usize,
+    _boo: PhantomData<&'a T>,
+}
+
+impl<'a, T> IntoIterator for &'a LinkedList<T> {
+    type IntoIter = Iter<'a, T>;
+    type Item = &'a T;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+    
+    fn next(&mut self) -> Option<Self::Item> {
+        
     }
 }
 
